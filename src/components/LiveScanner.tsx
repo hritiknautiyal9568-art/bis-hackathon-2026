@@ -111,6 +111,8 @@ export default function LiveScanner({
     }
   }, [autoScanEnabled, cameraActive, scanning, lastResult]);
 
+  const pendingStreamRef = useRef<MediaStream | null>(null);
+
   const startCamera = useCallback(async () => {
     try {
       setError(null);
@@ -118,19 +120,29 @@ export default function LiveScanner({
         streamRef.getTracks().forEach((t) => t.stop());
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-      });
+      // Try requested facingMode first, then fallback to any available camera
+      let stream: MediaStream | null = null;
+      const constraints = [
+        { video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } },
+        { video: { facingMode: facingMode === "environment" ? "user" : "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
+        { video: true },
+      ];
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      for (const constraint of constraints) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraint);
+          break;
+        } catch {
+          continue;
+        }
       }
 
+      if (!stream) {
+        throw new Error("No camera available");
+      }
+
+      // Store stream and activate camera — the useEffect below will attach stream to video
+      pendingStreamRef.current = stream;
       setStreamRef(stream);
       setCameraActive(true);
       setCameraPermission("granted");
@@ -147,6 +159,17 @@ export default function LiveScanner({
       }
     }
   }, [facingMode, streamRef]);
+
+  // Attach stream to video element once it's rendered
+  useEffect(() => {
+    const stream = pendingStreamRef.current;
+    if (cameraActive && stream && videoRef.current) {
+      const video = videoRef.current;
+      video.srcObject = stream;
+      video.play().catch((e) => console.error("Video play error:", e));
+      pendingStreamRef.current = null;
+    }
+  }, [cameraActive]);
 
   const stopCamera = useCallback(() => {
     if (streamRef) {
@@ -301,15 +324,16 @@ export default function LiveScanner({
       <div className={`relative bg-gray-950 rounded-2xl overflow-hidden group ${
         fullscreen ? "fixed inset-0 z-50 rounded-none" : ""
       }`}>
+        {/* Video element always mounted so ref is available — hidden when camera is off */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`w-full object-cover ${compact ? "h-[240px]" : "h-[320px] sm:h-[380px]"} ${!cameraActive ? "hidden" : ""}`}
+        />
         {cameraActive ? (
           <>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`w-full object-cover ${compact ? "h-[240px]" : "h-[320px] sm:h-[380px]"}`}
-            />
 
             {/* Animated Scan Overlay */}
             <div className="absolute inset-0 pointer-events-none">
