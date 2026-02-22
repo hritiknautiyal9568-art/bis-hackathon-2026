@@ -176,16 +176,37 @@ export default function LiveScanner({
     if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
+    // Ensure video is actually producing frames before capturing
+    if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
+      console.warn("Video not ready yet, skipping capture");
+      return;
+    }
+
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+
+    // Resize to max 1280px on longest side for optimal Gemini processing
+    const MAX_DIM = 1280;
+    let w = video.videoWidth;
+    let h = video.videoHeight;
+    if (w > MAX_DIM || h > MAX_DIM) {
+      const scale = MAX_DIM / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    canvas.width = w;
+    canvas.height = h;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
+    ctx.drawImage(video, 0, 0, w, h);
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
     const base64 = dataUrl.split(",")[1];
+
+    if (!base64 || base64.length < 100) {
+      console.warn("Captured image too small/empty, skipping");
+      return;
+    }
 
     setCapturedPreview(dataUrl);
 
@@ -197,9 +218,26 @@ export default function LiveScanner({
   const instantScan = useCallback(async () => {
     if (!cameraActive) {
       await startCamera();
-      setTimeout(() => {
-        captureFrame();
-      }, 1500);
+      // Wait for video to actually produce frames (poll every 200ms, max 5s)
+      const waitForVideo = () => {
+        return new Promise<void>((resolve) => {
+          let attempts = 0;
+          const check = () => {
+            attempts++;
+            const video = videoRef.current;
+            if (video && video.videoWidth > 0 && video.videoHeight > 0 && video.readyState >= 2) {
+              resolve();
+            } else if (attempts < 25) {
+              setTimeout(check, 200);
+            } else {
+              resolve(); // Give up after 5s, captureFrame will validate
+            }
+          };
+          setTimeout(check, 300); // Initial delay before first check
+        });
+      };
+      await waitForVideo();
+      captureFrame();
     } else {
       captureFrame();
     }

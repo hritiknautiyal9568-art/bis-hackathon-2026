@@ -45,6 +45,12 @@ async function callGeminiWithRetry(
           break;
         }
 
+        // Image processing error — try next model (different models handle images differently)
+        if (status === 400 && (msg.includes("Unable to process") || msg.includes("image"))) {
+          console.warn(`[Gemini] ${modelName} cannot process image (400), trying next model...`);
+          break;
+        }
+
         // Other errors — throw immediately
         throw error;
       }

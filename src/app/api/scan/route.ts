@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
       const result = getDemoData("scan", mode);
       return NextResponse.json({ result, scanMode: mode, isDemo: true, demoMessage: "AI quota exceeded — showing sample analysis" });
     }
+    // Handle image processing errors gracefully
+    if (error.message?.includes("Unable to process") || error.message?.includes("image")) {
+      return NextResponse.json(
+        { error: "Could not process this image. Please try capturing again with better lighting, or upload a clearer photo." },
+        { status: 422 }
+      );
+    }
     return NextResponse.json(
       { error: error.message || "Failed to analyze image" },
       { status: 500 }

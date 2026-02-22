@@ -59,8 +59,32 @@ export default function CustomerScanPage() {
         const reader = new FileReader();
         reader.onload = async () => {
           const dataUrl = reader.result as string;
-          const base64 = dataUrl.split(",")[1];
           const mimeType = file.type || "image/jpeg";
+
+          // Resize image to max 1280px for optimal AI processing
+          let base64 = dataUrl.split(",")[1];
+          try {
+            const img = new window.Image();
+            await new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = reject;
+              img.src = dataUrl;
+            });
+            const MAX_DIM = 1280;
+            if (img.width > MAX_DIM || img.height > MAX_DIM) {
+              const scale = MAX_DIM / Math.max(img.width, img.height);
+              const canvas = document.createElement("canvas");
+              canvas.width = Math.round(img.width * scale);
+              canvas.height = Math.round(img.height * scale);
+              const ctx = canvas.getContext("2d");
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+              }
+            }
+          } catch {
+            // If resize fails, use original
+          }
 
           const res = await fetch("/api/scan", {
             method: "POST",
@@ -155,7 +179,7 @@ export default function CustomerScanPage() {
 
               <div className="p-5 space-y-4">
                 {/* Hallmark mode results */}
-                {scanMode === "hallmark" && result.marksFound && (
+                {scanMode === "hallmark" && result.marksFound && Array.isArray(result.marksFound) && result.marksFound.length > 0 && (
                   <>
                     {result.marksFound.map((mark: any, i: number) => (
                       <div key={i} className="border border-gray-100 rounded-xl p-4">
@@ -284,7 +308,7 @@ export default function CustomerScanPage() {
                 )}
 
                 {/* Barcode mode results */}
-                {scanMode === "barcode" && result.codesFound && (
+                {scanMode === "barcode" && result.codesFound && Array.isArray(result.codesFound) && result.codesFound.length > 0 && (
                   <>
                     {result.codesFound.map((code: any, i: number) => (
                       <div key={i} className="border border-gray-100 rounded-xl p-4">
@@ -321,6 +345,66 @@ export default function CustomerScanPage() {
                         <li key={i}>• {r}</li>
                       ))}
                     </ul>
+                  </div>
+                )}
+
+                {/* Generic Fallback — renders when mode-specific renderers don't match */}
+                {!result.rawAnalysis && !(
+                  (scanMode === "hallmark" && result.marksFound && Array.isArray(result.marksFound) && result.marksFound.length > 0) ||
+                  (scanMode === "barcode" && result.codesFound && Array.isArray(result.codesFound) && result.codesFound.length > 0)
+                ) && !(scanMode === "product" && result.productName) && !(scanMode === "label" && (result.productName || result.complianceScore !== undefined)) && (
+                  <div className="space-y-3">
+                    {/* Try to show any string/number fields as info cards */}
+                    {Object.entries(result).filter(([k, v]) => typeof v === "string" || typeof v === "number").length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(result)
+                          .filter(([, v]) => typeof v === "string" || typeof v === "number")
+                          .map(([key, val], i) => (
+                            <div key={i} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wider block mb-0.5">
+                                {key.replace(/([A-Z])/g, " $1").replace(/^./, (s: string) => s.toUpperCase())}
+                              </span>
+                              <span className="text-sm font-medium text-gray-800">{String(val)}</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                    {/* Show any array fields as bullet lists */}
+                    {Object.entries(result)
+                      .filter(([, v]) => Array.isArray(v) && (v as any[]).length > 0)
+                      .map(([key, val], i) => (
+                        <div key={i} className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                          <p className="text-xs font-semibold text-[#003580] mb-1.5">
+                            {key.replace(/([A-Z])/g, " $1").replace(/^./, (s: string) => s.toUpperCase())}
+                          </p>
+                          <ul className="text-xs text-gray-700 space-y-1">
+                            {(val as any[]).map((item: any, j: number) => (
+                              <li key={j} className="flex items-start gap-1.5">
+                                <CheckCircle2 className="h-3 w-3 text-[#003580] mt-0.5 flex-shrink-0" />
+                                <span>{typeof item === "string" ? item : JSON.stringify(item)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    {/* Show any object fields */}
+                    {Object.entries(result)
+                      .filter(([, v]) => typeof v === "object" && v !== null && !Array.isArray(v))
+                      .map(([key, val], i) => (
+                        <div key={i} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                          <p className="text-xs font-semibold text-gray-700 mb-1.5">
+                            {key.replace(/([A-Z])/g, " $1").replace(/^./, (s: string) => s.toUpperCase())}
+                          </p>
+                          <div className="text-xs text-gray-600 space-y-0.5">
+                            {Object.entries(val as Record<string, unknown>).map(([k, v], j) => (
+                              <div key={j}>
+                                <span className="text-gray-400">{k.replace(/([A-Z])/g, " $1")}:</span>{" "}
+                                <span className="text-gray-800 font-medium">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 )}
 
