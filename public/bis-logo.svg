@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440" width="400" height="440">
+  <defs>
+    <style>
+      .blue { fill: #003580; }
+      .red { fill: #E42313; }
+      .white { fill: #ffffff; }
+    </style>
+  </defs>
+  
+  <!-- Red top line -->
+  <rect x="60" y="10" width="280" height="6" rx="3" class="red"/>
+  
+  <!-- Blue Triangle (outer) - rounded -->
+  <path d="M200 40 L340 280 Q345 290 335 295 L65 295 Q55 290 60 280 Z" class="blue" stroke-linejoin="round"/>
+  
+  <!-- White inner triangle cutout -->
+  <path d="M200 80 L310 270 L90 270 Z" class="white"/>
+  
+  <!-- Blue inner A-frame structure -->
+  <!-- Left leg -->
+  <path d="M200 72 L185 72 L88 268 L115 268 Z" class="blue"/>
+  <!-- Right leg -->
+  <path d="M200 72 L215 72 L312 268 L285 268 Z" class="blue"/>
+  <!-- Crossbar -->
+  <rect x="130" y="200" width="140" height="28" class="blue"/>
+  
+  <!-- Red circle (center dot) -->
+  <circle cx="200" cy="178" r="32" class="red"/>
+  
+  <!-- Hindi text -->
+  <text x="200" y="335" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" class="blue">मानक: पथप्रदर्शक:</text>
+  
+  <!-- Red bottom line -->
+  <rect x="60" y="352" width="280" height="5" rx="2.5" class="red"/>
+  
+  <!-- English text -->
+  <text x="200" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" class="blue">Bureau of Indian Standards</text>
+</svg>
