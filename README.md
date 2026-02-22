@@ -31,7 +31,30 @@ Built with **Next.js 16** + **Gemini 2.5 Flash AI** + **TypeScript** + **Tailwin
 
 ## Quick Start (New PC)
 
-### 1. Clone the repo
+### Option A: One-Click Setup (Recommended)
+
+**Windows:**
+```bash
+git clone https://github.com/hritiknautiyal9568-art/bis-hackathon-2026.git
+cd bis-hackathon-2026
+setup.bat
+```
+
+**Mac/Linux:**
+```bash
+git clone https://github.com/hritiknautiyal9568-art/bis-hackathon-2026.git
+cd bis-hackathon-2026
+chmod +x setup.sh
+./setup.sh
+```
+
+> The script installs all dependencies, asks for your API key, creates the config file, and starts the server automatically!
+
+---
+
+### Option B: Manual Setup
+
+#### 1. Clone the repo
 
 ```bash
 git clone https://github.com/hritiknautiyal9568-art/bis-hackathon-2026.git
